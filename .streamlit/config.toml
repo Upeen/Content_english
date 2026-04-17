@@ -1,0 +1,13 @@
+[general]
+name = "Breaking News Finder"
+email = "your.email@example.com"
+
+[theme]
+primaryColor = "#FF3D71"
+backgroundColor = "#0E0E12"
+secondaryBackgroundColor = "#1A1A24"
+textColor = "#FFFFFF"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false

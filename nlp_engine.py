@@ -390,7 +390,7 @@ def run_full_analysis(articles: List[Dict]) -> Dict:
 
     results = {
         "summary": analyzer.generate_summary(),
-        "similar_articles": analyzer.find_similar_articles()[:100],  # Top 100
+        "similar_articles": analyzer.find_similar_articles(),
         "topic_clusters": analyzer.cluster_topics(),
         "keyword_comparison": {
             source: [(kw, score) for kw, score in kws]

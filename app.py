@@ -518,19 +518,37 @@ elif page == PAGE_DUPLICATES:
 
     def parse_ts(pub_str):
         try:
-            return pd.to_datetime(pub_str)
+            ts = pd.to_datetime(pub_str)
+            return None if pd.isna(ts) else ts
         except Exception:
             return None
 
     cov_start, cov_end = local_date_range if (local_date_range and len(local_date_range) == 2) else (None, None)
 
     if local_source != "All":
-        filtered_pairs = [
+        source_pairs = [
             p for p in similar
             if p["article_1"].get("source") == local_source or p["article_2"].get("source") == local_source
         ]
     else:
-        filtered_pairs = similar
+        source_pairs = similar
+
+    filtered_pairs = []
+    for pair in source_pairs:
+        a1 = pair["article_1"]
+        a2 = pair["article_2"]
+        ts1 = parse_ts(a1.get("published_at", ""))
+        ts2 = parse_ts(a2.get("published_at", ""))
+
+        if cov_start and cov_end and ts1 and ts2:
+            date1 = ts1.date()
+            date2 = ts2.date()
+            if not ((cov_start <= date1 <= cov_end) or (cov_start <= date2 <= cov_end)):
+                continue
+
+        filtered_pairs.append(pair)
+
+    filtered_pairs.sort(key=lambda p: p.get("similarity_score", 0), reverse=True)
 
     topic_groups = {}
     for pair in filtered_pairs:
@@ -539,13 +557,6 @@ elif page == PAGE_DUPLICATES:
 
         ts1 = parse_ts(a1.get("published_at", ""))
         ts2 = parse_ts(a2.get("published_at", ""))
-
-        if ts1 and ts2:
-            if cov_start and cov_end:
-                date1 = ts1.date()
-                date2 = ts2.date()
-                if not ((cov_start <= date1 <= cov_end) or (cov_start <= date2 <= cov_end)):
-                    continue
 
         key1 = a1.get("title", "")[:50]
         key2 = a2.get("title", "")[:50]
@@ -591,14 +602,16 @@ elif page == PAGE_DUPLICATES:
 
         if len(sorted_articles) > 1:
             first_ts = sorted_articles[0][1]["ts"]
+            story_score = max(d["similarity"] for _, d in sorted_articles)
             grouped_results.append({
                 "topic": topic,
                 "publishers": sorted_articles,
                 "first_ts": first_ts,
                 "count": len(sorted_articles),
+                "story_score": story_score,
             })
 
-    grouped_results.sort(key=lambda x: max(d["similarity"] for _, d in x["publishers"]) if x["publishers"] else 0, reverse=True)
+    grouped_results.sort(key=lambda x: x["story_score"], reverse=True)
 
     if not grouped_results:
         st.info("No duplicate content found in the current filters.")
@@ -616,7 +629,7 @@ elif page == PAGE_DUPLICATES:
         for g in grouped_results:
             for _, data in g["publishers"]:
                 all_sims.append(data["similarity"])
-        avg_score = round(sum(all_sims) / len(all_sims), 2) if all_sims else 0
+        avg_score = round((sum(all_sims) / len(all_sims)) * 100, 1) if all_sims else 0
         max_score = round(max(all_sims) * 100, 1) if all_sims else 0
 
         metrics = [
@@ -636,12 +649,79 @@ elif page == PAGE_DUPLICATES:
             """, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown("### 🥇 Ranked Duplicates by Story")
+        st.markdown("### All Duplicate Matches")
+
+        st.caption(f"Showing {len(filtered_pairs)} duplicate matches sorted from highest to lowest duplicate percentage.")
+
+        pair_export_data = []
+        for match_rank, pair in enumerate(filtered_pairs, start=1):
+            a1 = pair["article_1"]
+            a2 = pair["article_2"]
+            ts1 = parse_ts(a1.get("published_at", ""))
+            ts2 = parse_ts(a2.get("published_at", ""))
+            score = round(pair.get("similarity_score", 0) * 100, 1)
+
+            first_source = ""
+            second_source = ""
+            time_gap = ""
+            if ts1 and ts2:
+                if ts1 <= ts2:
+                    first_source = a1.get("source", "")
+                    second_source = a2.get("source", "")
+                else:
+                    first_source = a2.get("source", "")
+                    second_source = a1.get("source", "")
+                time_gap = round(abs((ts2 - ts1).total_seconds()) / 60, 1)
+
+            pair_export_data.append({
+                "Rank": match_rank,
+                "Duplicate %": score,
+                "First Publisher": first_source,
+                "Second Publisher": second_source,
+                "Time Gap (min)": time_gap,
+                "Publisher A": a1.get("source", ""),
+                "Published A": ts1.strftime("%Y-%m-%d %H:%M") if ts1 else "N/A",
+                "Title A": a1.get("title", ""),
+                "URL A": a1.get("url", ""),
+                "Publisher B": a2.get("source", ""),
+                "Published B": ts2.strftime("%Y-%m-%d %H:%M") if ts2 else "N/A",
+                "Title B": a2.get("title", ""),
+                "URL B": a2.get("url", ""),
+            })
+
+        pair_export_df = pd.DataFrame(pair_export_data)
+        if not pair_export_df.empty:
+            pair_export_df = pair_export_df.sort_values("Duplicate %", ascending=False).reset_index(drop=True)
+            pair_export_df["Rank"] = range(1, len(pair_export_df) + 1)
+            csv_col, _ = st.columns([1, 4])
+            with csv_col:
+                all_pairs_csv = pair_export_df.to_csv(index=False).encode("utf-8")
+                st.download_button(
+                    "Download CSV",
+                    all_pairs_csv,
+                    "all_duplicate_matches.csv",
+                    "text/csv",
+                    use_container_width=True,
+                    key="all_duplicate_matches_csv",
+                )
+            st.dataframe(
+                pair_export_df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Duplicate %": st.column_config.NumberColumn("Duplicate %", format="%.1f%%"),
+                    "URL A": st.column_config.LinkColumn("URL A", display_text="Open"),
+                    "URL B": st.column_config.LinkColumn("URL B", display_text="Open"),
+                },
+            )
+
+        st.markdown("---")
+        st.markdown("### Ranked Duplicates by Story")
 
         medal_colors = ["#FFD700", "#C0C0C0", "#CD7F32", "#2d2d3d", "#3d3d4d", "#4d4d5d", "#5d5d6d"]
         medal_icons = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣"]
 
-        for g_idx, group in enumerate(grouped_results[:20], start=1):
+        for g_idx, group in enumerate(grouped_results, start=1):
             all_sims = [data["similarity"] for _, data in group["publishers"]]
             max_sim = max(all_sims) if all_sims else 0
             avg_sim = sum(all_sims) / len(all_sims) if all_sims else 0
@@ -711,19 +791,29 @@ elif page == PAGE_DUPLICATES:
                     "URL": art.get("url", ""),
                 })
 
+            publisher_df = pd.DataFrame(publishers_data)
+            story_no = g_idx
+            dup_sr_no = f"DUP{str(story_no).zfill(3)}"
+            csv_col, _ = st.columns([1, 4])
+            with csv_col:
+                pub_csv = publisher_df.to_csv(index=False).encode("utf-8")
+                st.download_button(
+                    "Download CSV",
+                    pub_csv,
+                    f"story_{dup_sr_no}.csv",
+                    "text/csv",
+                    use_container_width=True,
+                    key=f"story_{dup_sr_no}_csv",
+                )
+
             st.dataframe(
-                pd.DataFrame(publishers_data),
+                publisher_df,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
                     "URL": st.column_config.LinkColumn("Link", display_text="Open"),
                 }
             )
-
-            story_no = g_idx + 1
-            dup_sr_no = f"DUP{str(story_no).zfill(3)}"
-            pub_csv = pd.DataFrame(publishers_data).to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download CSV", pub_csv, f"story_{dup_sr_no}.csv", "text/csv", use_container_width=True)
 
             st.markdown("---")
 
@@ -743,22 +833,36 @@ elif page == PAGE_DUPLICATES:
                     "Publisher": source,
                     "Published At": ts.strftime("%Y-%m-%d %H:%M") if ts else "N/A",
                     "Time Gap (min)": "0" if delay == 0 else f"+{delay:.0f}",
-                    "Duplicate %": f"{data['similarity']:.1%}",
+                    "Duplicate %": round(data["similarity"] * 100, 1),
                     "Title": art.get("title", ""),
                     "URL": art.get("url", ""),
                 })
 
         export_df = pd.DataFrame(all_export_data)
+        if not export_df.empty:
+            export_df = export_df.sort_values("Duplicate %", ascending=False).reset_index(drop=True)
+
+        csv_col, _ = st.columns([1, 4])
+        with csv_col:
+            summary_csv = export_df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "Download CSV",
+                summary_csv,
+                "duplicate_summary.csv",
+                "text/csv",
+                use_container_width=True,
+                key="duplicate_summary_csv",
+            )
+
         st.dataframe(
             export_df,
             use_container_width=True,
             hide_index=True,
             column_config={
+                "Duplicate %": st.column_config.NumberColumn("Duplicate %", format="%.1f%%"),
                 "URL": st.column_config.LinkColumn("Link", display_text="Open"),
             }
         )
-        summary_csv = export_df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download CSV", summary_csv, "duplicate_summary.csv", use_container_width=True)
 
 
 if st.session_state.get("fetching_now", False):

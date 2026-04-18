@@ -1,44 +1,50 @@
-"""
-Configuration for Breaking News Finder - Competitor Sitemap Sources
-"""
+import os
 
+# Fetching & Lookback (Unified Time Span)
+DEFAULT_DAYS_BACK = int(os.getenv("DEFAULT_DAYS_BACK", 3))
+DATA_DIR = os.getenv("DATA_DIR", "data")
+
+# Define Competitors, their endpoints, and their structural data logic
 COMPETITORS = {
     "News18 Gujarati": {
-        "website": "https://gujarati.news18.com/",
         "sitemap": "https://gujarati.news18.com/commonfeeds/v1/guj/sitemap-index.xml",
-        "color": "#E53935",
+        "fetch_strategy": "daily_index",  # Contains multiple children sitemaps mapping day-by-day
+        "days_to_fetch": DEFAULT_DAYS_BACK
     },
     "TV9 Gujarati": {
-        "website": "https://tv9gujarati.com/",
         "sitemap": "https://tv9gujarati.com/news-sitemap.xml",
-        "color": "#1E88E5",
+        "fetch_strategy": "direct",       # Single continuous feed
+        "days_to_fetch": DEFAULT_DAYS_BACK
     },
     "ABP Gujarati": {
-        "website": "https://gujarati.abplive.com/",
         "sitemap": "https://gujarati.abplive.com/news-sitemap.xml",
-        "color": "#43A047",
+        "fetch_strategy": "daily_index",
+        "days_to_fetch": DEFAULT_DAYS_BACK
     },
     "Gujarat Samachar": {
-        "website": "https://www.gujaratsamachar.com/",
         "sitemap": "https://www.gujaratsamachar.com/sitemap.xml",
-        "color": "#FB8C00",
+        "fetch_strategy": "direct",
+        "days_to_fetch": DEFAULT_DAYS_BACK
     },
     "Sandesh": {
-        "website": "https://sandesh.com/",
         "sitemap": "https://sandesh.com/top-10.xml",
-        "color": "#8E24AA",
+        "fetch_strategy": "direct",
+        "days_to_fetch": DEFAULT_DAYS_BACK
+    },
+    "Zee Gujarati": {
+        "sitemap": "https://zeenews.india.com/gujarati/sitemaps/news-sitemap.xml",
+        "fetch_strategy": "direct_waf_bypass", # Heavy Akamai Firewall blocked URL
+        "days_to_fetch": DEFAULT_DAYS_BACK
     },
     "Divya Bhaskar": {
-        "website": "https://www.divyabhaskar.co.in/",
         "sitemap": "https://www.divyabhaskar.co.in/sitemaps-v1--sitemap-google-news-1.xml",
-        "color": "#00897B",
+        "fetch_strategy": "direct",
+        "days_to_fetch": DEFAULT_DAYS_BACK
     },
 }
-
 # Data storage
-DATA_DIR = "data"
-JSON_STORE_FILE = "data/news_data.json"
-ANALYSIS_STORE_FILE = "data/analysis_results.json"
+JSON_STORE_FILE = os.path.join(DATA_DIR, "news_data.json")
+ANALYSIS_STORE_FILE = os.path.join(DATA_DIR, "analysis_results.json")
 
 # Parsing settings
 REQUEST_TIMEOUT = 30
@@ -51,3 +57,6 @@ MIN_SIMILARITY_THRESHOLD = 0.35
 HIGH_SIMILARITY_THRESHOLD = 0.65
 TOP_KEYWORDS_COUNT = 20
 NGRAM_RANGE = (1, 3)
+
+# Fetching & Lookback
+# Controlled globally at the top of the file via DEFAULT_DAYS_BACK

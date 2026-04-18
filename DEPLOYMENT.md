@@ -2,9 +2,30 @@
 
 ## Breaking News Finder
 
-This guide covers deploying to Streamlit Cloud (streamlit.io/cloud).
+This guide covers deploying to **Render** (Recommended for stability) and **Streamlit Cloud**.
 
 ---
+
+## ☁️ Deploying to Render (Recommended)
+
+Render is excellent for production because it supports **Persistent Disks** and custom environment variables.
+
+### Configuration Files
+I have already set up the following for you:
+- **`render.yaml`**: Standard configuration file for Render blue/green deployments.
+- **`Procfile`**: Tells Render how to run the Streamlit server.
+- **`runtime.txt`**: Pins the Python version for stability.
+
+### Deployment Instructions
+1.  Push your code to GitHub.
+2.  Connect the repository to **Render**.
+3.  Use the `render.yaml` template or manually set the start command to:
+    `streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true`
+4.  (Optional) Attach a **Disk** pointing to the `/data` folder to keep your news cache.
+
+---
+
+## 🎈 Deploying to Streamlit Cloud
 
 ## Prerequisites
 

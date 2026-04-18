@@ -20,13 +20,24 @@ fi
 
 # Activate virtual environment
 echo "📦 Activating virtual environment..."
-source venv/Scripts/activate 2>/dev/null || source venv/bin/activate 2>/dev/null
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    source venv/Scripts/activate
+else
+    source venv/bin/activate
+fi
 
 # Install dependencies if needed
 if [ ! -f ".packages_installed" ]; then
     echo "📥 Installing dependencies..."
-    pip install -r requirements.txt
-    touch .packages_installed
+    python -m pip install --upgrade pip
+    python -m pip install -r requirements.txt
+    if [ $? -eq 0 ]; then
+        touch .packages_installed
+        echo "✅ Dependencies installed successfully."
+    else
+        echo "❌ Failed to install dependencies."
+        exit 1
+    fi
 fi
 
 # Check if data directory exists
@@ -37,7 +48,10 @@ fi
 
 # Start Streamlit
 echo "🚀 Starting Streamlit server..."
-echo "🌐 Open http://localhost:8501 in your browser"
-echo ""
-
-streamlit run app.py --server.headless false --browser.gatherUsageStats false
+if [ -n "$PORT" ]; then
+    echo "🌐 Running in cloud environment on port $PORT"
+    python -m streamlit run app.py --server.port "$PORT" --server.address 0.0.0.0 --server.headless true
+else
+    echo "🌐 Running locally on port 8501"
+    python -m streamlit run app.py --server.headless false --browser.gatherUsageStats false
+fi

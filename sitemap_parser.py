@@ -27,7 +27,13 @@ NAMESPACES = {
 
 
 def fetch_url(url: str, retries: int = MAX_RETRIES) -> Optional[bytes]:
-    """Fetch URL content with retry logic and exponential backoff."""
+    """Fetch URL content with retry logic, exponential backoff, and WAF bypass using curl_cffi."""
+    try:
+        from curl_cffi import requests as cffi_requests
+        has_cffi = True
+    except ImportError:
+        has_cffi = False
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -36,10 +42,15 @@ def fetch_url(url: str, retries: int = MAX_RETRIES) -> Optional[bytes]:
     }
     for attempt in range(retries):
         try:
-            response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+            # Use curl_cffi to transparently bypass Akamai/Cloudflare for known strict sites or retries
+            if has_cffi and ("zeenews" in url or attempt > 0):
+                response = cffi_requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT, impersonate="chrome110")
+            else:
+                response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+                
             response.raise_for_status()
             return response.content
-        except requests.RequestException as e:
+        except Exception as e:
             logger.warning(f"Attempt {attempt + 1}/{retries} failed for {url}: {e}")
             if attempt < retries - 1:
                 time.sleep(RETRY_DELAY * (attempt + 1))
@@ -147,10 +158,13 @@ def extract_article_data(url_elem, ns: dict, source_name: str, cutoff_time: date
         if title_elems and title_elems[0].text:
             title = title_elems[0].text.strip()
 
-        # Publication date
+        # Publication date extraction with multiple fallbacks
         pub_elems = news_elem.xpath("news:publication_date", namespaces=ns)
         if not pub_elems:
             pub_elems = news_elem.xpath("n:publication_date", namespaces={"n": NAMESPACES["news"]})
+        if not pub_elems:
+            pub_elems = news_elem.xpath(".//*[local-name()='publication_date']")
+            
         if pub_elems and pub_elems[0].text:
             pub_date_str = pub_elems[0].text.strip()
 
@@ -158,6 +172,8 @@ def extract_article_data(url_elem, ns: dict, source_name: str, cutoff_time: date
         kw_elems = news_elem.xpath("news:keywords", namespaces=ns)
         if not kw_elems:
             kw_elems = news_elem.xpath("n:keywords", namespaces={"n": NAMESPACES["news"]})
+        if not kw_elems:
+            kw_elems = news_elem.xpath(".//*[local-name()='keywords']")
         if kw_elems and kw_elems[0].text:
             keywords = kw_elems[0].text.strip()
 
@@ -165,12 +181,25 @@ def extract_article_data(url_elem, ns: dict, source_name: str, cutoff_time: date
         pub_name_elems = news_elem.xpath("news:publication/news:name", namespaces=ns)
         if not pub_name_elems:
             pub_name_elems = news_elem.xpath("n:publication/n:name", namespaces={"n": NAMESPACES["news"]})
+        if not pub_name_elems:
+            pub_name_elems = news_elem.xpath(".//*[local-name()='name']")
         if pub_name_elems and pub_name_elems[0].text:
             news_name = pub_name_elems[0].text.strip()
 
     # Determine the best date to use
     best_date_str = pub_date_str or lastmod
     article_dt = parse_datetime(best_date_str) if best_date_str else None
+
+    # If parsing failed, try once more with the raw string directly
+    if not article_dt and best_date_str:
+        try:
+            # Aggressive parsing fallback
+            import dateutil.parser as du_parser
+            article_dt = du_parser.parse(best_date_str, fuzzy=True)
+            if article_dt and article_dt.tzinfo is None:
+                article_dt = article_dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            article_dt = None
 
     # Filter by cutoff time (last 24 hours)
     if article_dt and article_dt < cutoff_time:
@@ -258,16 +287,18 @@ def fetch_competitor_articles(name: str, config: dict, cutoff_time: datetime) ->
     child_sitemaps = resolve_sitemap_index(xml_content, name)
 
     if child_sitemaps:
-        # Fetch child sitemaps (limit to recent ones, usually first few)
+        # Fetch child sitemaps (limit to recent ones to ensure we cover the 3-day cutoff)
         all_articles = []
-        for child_url in child_sitemaps[:5]:  # Limit to 5 most recent child sitemaps
+        for child_url in child_sitemaps[:10]:  # Limit to 10 most recent child sitemaps ensuring we hit 3+ days
             logger.info(f"[{name}] Fetching child sitemap: {child_url}")
             child_xml = fetch_url(child_url)
             if child_xml:
                 articles = parse_news_sitemap(child_xml, name, cutoff_time)
                 all_articles.extend(articles)
-                if len(all_articles) > 0:
-                    # If we found articles in this child, likely the most recent
+                
+                # If we successfully pulled articles before, but this sitemap yields 0 valid articles 
+                # based on our cutoff_time, it means we've scrolled too far back into the past.
+                if len(all_articles) > 0 and len(articles) == 0:
                     break
         return all_articles
     else:

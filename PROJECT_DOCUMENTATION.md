@@ -158,9 +158,28 @@ breaking-news-finder/
 │   ├── data_fetching.md
 │   ├── nlp.md
 │   └── data_storage.md
-├── start.sh           # Bash startup script
-└── start.ps1          # PowerShell startup script
+├── start.sh           # Bash startup script (cloud/local dual-mode)
+├── start.ps1          # PowerShell startup script
+├── render.yaml        # Render Infrastructure as Code
+├── Procfile           # Render/Heroku process file
+└── runtime.txt        # Python version pin
 ```
+
+---
+
+## 🚀 Deployment
+
+The project is optimized for **Render** and **Streamlit Cloud**:
+
+### 1. Render (Recommended)
+- **Automatic Configuration**: Uses `render.yaml` for zero-config setup.
+- **Persistent Storage**: Supports Render Disks to cache JSON data across restarts.
+- **Dynamic Port**: Binds to `$PORT` automatically.
+- **Config**: See `STEP_BY_STEP_RENDER_GUIDE.md` for details.
+
+### 2. Streamlit Cloud
+- **Quick Deploy**: Point to `app.py` in your GitHub repo.
+- **Config**: See `DEPLOYMENT.md` for details.
 
 ---
 

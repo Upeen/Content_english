@@ -4,40 +4,64 @@ import os
 DEFAULT_DAYS_BACK = int(os.getenv("DEFAULT_DAYS_BACK", 3))
 DATA_DIR = os.getenv("DATA_DIR", "data")
 
-# Define Competitors, their endpoints, and their structural data logic
 COMPETITORS = {
-    "News18 Gujarati": {
-        "sitemap": "https://gujarati.news18.com/commonfeeds/v1/guj/sitemap-index.xml",
-        "fetch_strategy": "daily_index",  # Contains multiple children sitemaps mapping day-by-day
-        "days_to_fetch": DEFAULT_DAYS_BACK
-    },
-    "TV9 Gujarati": {
-        "sitemap": "https://tv9gujarati.com/news-sitemap.xml",
-        "fetch_strategy": "direct",       # Single continuous feed
-        "days_to_fetch": DEFAULT_DAYS_BACK
-    },
-    "ABP Gujarati": {
-        "sitemap": "https://gujarati.abplive.com/news-sitemap.xml",
-        "fetch_strategy": "daily_index",
-        "days_to_fetch": DEFAULT_DAYS_BACK
-    },
-    "Gujarat Samachar": {
-        "sitemap": "https://www.gujaratsamachar.com/sitemap.xml",
+    "Navbharat Times": {
+        "sitemap": "https://navbharattimes.indiatimes.com/staticsitemap/nbt/news/sitemap-48hours.xml",
         "fetch_strategy": "direct",
         "days_to_fetch": DEFAULT_DAYS_BACK
     },
-    "Sandesh": {
-        "sitemap": "https://sandesh.com/top-10.xml",
+    "AAJTAK.IN": {
+        "sitemap": "https://www.aajtak.in/rssfeeds/news-sitemap.xml",
         "fetch_strategy": "direct",
         "days_to_fetch": DEFAULT_DAYS_BACK
     },
-    "Zee Gujarati": {
-        "sitemap": "https://zeenews.india.com/gujarati/sitemaps/news-sitemap.xml",
-        "fetch_strategy": "direct_waf_bypass", # Heavy Akamai Firewall blocked URL
+    "JAGRAN.COM": {
+        "sitemap": "https://www.jagran.com/news-sitemap.xml",
+        "fetch_strategy": "direct",
         "days_to_fetch": DEFAULT_DAYS_BACK
     },
-    "Divya Bhaskar": {
-        "sitemap": "https://www.divyabhaskar.co.in/sitemaps-v1--sitemap-google-news-1.xml",
+    "ABP Live Hindi": {
+        "sitemap": "https://www.abplive.com/news-19-04-2026.xml",
+        "fetch_strategy": "direct",
+        "days_to_fetch": DEFAULT_DAYS_BACK
+    },
+    "NDTV.IN": {
+        "sitemap": "https://ndtv.in/sitemap.xml?yyyy=2026&mm=3&sitename=ndtv-khabar&category=",
+        "fetch_strategy": "direct",
+        "days_to_fetch": DEFAULT_DAYS_BACK
+    },
+    "LiveHindustan": {
+        "sitemap": "https://www.livehindustan.com/news-sitemap.xml",
+        "fetch_strategy": "direct",
+        "days_to_fetch": DEFAULT_DAYS_BACK
+    },
+    "News18 Hindi": {
+        "sitemap": "https://hindi.news18.com/allstory-sitemap-data.xml",
+        "fetch_strategy": "direct",
+        "days_to_fetch": DEFAULT_DAYS_BACK
+    },
+    "INDIATV.IN": {
+        "sitemap": "https://www.indiatv.in/xmlsitemap/sitemap/generic-articles-2026-04-19.xml",
+        "fetch_strategy": "direct",
+        "days_to_fetch": DEFAULT_DAYS_BACK
+    },
+    "TIMESNOWHINDI.COM": {
+        "sitemap": "https://www.timesnowhindi.com/feeds/tnhindi-google-news-sitemap.xml",
+        "fetch_strategy": "direct",
+        "days_to_fetch": DEFAULT_DAYS_BACK
+    },
+    "JANSATTA.COM": {
+        "sitemap": "https://www.jansatta.com/sitemap.xml?yyyy=2026&mm=04&dd=19",
+        "fetch_strategy": "direct",
+        "days_to_fetch": DEFAULT_DAYS_BACK
+    },
+    "TV9HINDI.COM": {
+        "sitemap": "https://www.tv9hindi.com/sitemap.xml?yyyy=2026&mm=04&dd=19",
+        "fetch_strategy": "direct",
+        "days_to_fetch": DEFAULT_DAYS_BACK
+    },
+    "ZeeNews Hindi": {
+        "sitemap": "https://zeenews.india.com/hindi/sitemaps/news-sitemap.xml",
         "fetch_strategy": "direct",
         "days_to_fetch": DEFAULT_DAYS_BACK
     },

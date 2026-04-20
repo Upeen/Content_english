@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Breaking News Finder - Streamlit Dashboard
+Breaking News Lens - Streamlit Dashboard
 Zee Gujarati Competitor Analysis Tool
 """
 
@@ -21,7 +21,7 @@ from nlp_engine import NewsAnalyzer, run_full_analysis
 from data_store import save_articles, load_articles, save_analysis, load_analysis, get_data_freshness
 
 st.set_page_config(
-    page_title="Breaking News Finder | Zee Gujarati",
+    page_title="Breaking News Lens | Zee Gujarati",
     page_icon="📰",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -133,7 +133,7 @@ st.markdown(
 
 
 
-    /* Remove gap above News Finder */
+    /* Remove gap above News Lens */
     [data-testid="stSidebar"] section[data-testid="stSidebarContent"] > div {
         padding-top: 0px !important;
     }
@@ -510,7 +510,7 @@ def get_filters(key_prefix, include_hours=False):
 
 # ---- SIDEBAR REFINED COMPOSITION ----
 with st.sidebar:
-    st.markdown("# News Finder")
+    st.markdown("# News Lens")
     
     # Placeholder container for Status/Range (to appear after title)
     status_range_container = st.container()

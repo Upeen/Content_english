@@ -4,7 +4,7 @@
 
 ## Project Goal
 
-Monitor and analyze how competing Gujarati news publishers cover stories. Track who breaks news first, identify duplicate content across competitors, and find coverage gaps.
+Monitor and analyze how competing Gujarati news publishers cover stories. Track who breaks news first and find coverage gaps.
 
 ---
 
@@ -39,19 +39,6 @@ Then open **http://localhost:8501** in your browser.
 - **Podium Display**: Medal icons (🥇🥈🥉) for fastest publishers
 - Timeline table + Chronological feed table
 - URL links for all articles
-
-### 🔁 Duplicate Content Tab
-- Date range filter + Source filter
-- Story cards sorted by duplicate % (descending)
-- Medal rankings (up to 7 publishers per story)
-- Duplicate Score badges with color coding
-- Summary table with all URLs
-- CSV export with Duplicate_Sr_no. (DUP101, DUP102...)
-
-### Color Coding
-- **Gold (≥80%)**: Very high duplicate similarity
-- **Red (≥50%)**: High duplicate similarity
-- **Blue (<50%)**: Moderate duplicate similarity
 
 ---
 
@@ -117,5 +104,4 @@ See `PROJECT_DOCUMENTATION.md` for full documentation including:
 - Tab functionality details
 - Data flow & logic
 - NLP analysis pipeline
-- Duplicate detection algorithm
 - Technical decisions

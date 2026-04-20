@@ -5,10 +5,9 @@
 **Breaking News Finder** is a competitor content intelligence dashboard for **Zee Gujarati** that monitors and analyzes how competing Gujarati news publishers cover stories. The tool tracks:
 
 - Who breaks news first (Coverage Race)
-- Duplicate content across competitors (who re-publishes whose content)
 - Coverage gaps (stories missed by certain competitors)
 
-This enables editorial teams to understand competitive positioning, identify content theft/copying, and find gaps in their coverage.
+This enables editorial teams to understand competitive positioning and find gaps in their coverage.
 
 ---
 
@@ -46,28 +45,7 @@ This enables editorial teams to understand competitive positioning, identify con
 
 ---
 
-### 2. 🔁 Duplicate Content Tab
-
-**Purpose**: Identifies articles that are duplicates/copies across different competitors.
-
-**Features**:
-- **Filters**: Date range picker + Source selector dropdown
-- **Story Cards**: Grouped cards showing duplicate stories sorted by duplicate %
-- **Medal Rankings**: Up to 7 publishers per story ranked by publish time
-- **Duplicate Score Badge**: Color-coded percentage (gold ≥80%, red ≥50%, blue <50%)
-- **Per-Story Tables**: Individual tables for each story with publish time, source, URL
-- **Summary Table**: All duplicates with Duplicate_Sr_no. (DUP101, DUP102...), URL links, duplicate %
-- **CSV Download**: Export all data as CSV
-
-**Logic**:
-1. Similar articles retrieved from NLP analysis (`similar_articles`)
-2. Pairs are grouped by title prefix (first 50 chars)
-3. Within each group, unique publishers extracted (deduplication)
-4. Publishers ranked by publish time (earliest = first)
-5. Sorted by highest duplicate % descending
-6. DUP serial numbers start from 101
-
----
+### 2. 📊 Raw Data Tab
 
 ## Data Flow & Logic
 
@@ -107,36 +85,11 @@ Sitemap URLs → sitemap_parser.py → Articles → JSON Cache
 
 ---
 
-### Duplicate Detection Logic
-
-```python
-# Simplified duplicate detection flow
-for pair in similar_articles:
-    a1, a2 = pair["article_1"], pair["article_2"]
-    key1, key2 = a1["title"][:50], a2["title"][:50]
-    topic_key = min(key1, key2)  # Group by story
-    
-    # Track unique publishers per story
-    if topic_key not in topic_groups:
-        topic_groups[topic_key] = []
-    
-    # Add both articles to the group
-    topic_groups[topic_key].append({
-        "article": a1,
-        "ts": parse_ts(a1["published_at"]),
-        "similarity": pair["similarity_score"]
-    })
-```
-
----
-
 ### Key Technical Decisions
 
 1. **Title Prefix (50 chars)**: Used as story identifier to handle minor title variations
 2. **48-Hour Lookback**: Default window to focus on recent/breaking news
 3. **Datetime Handling**: `.dt` accessor requires `notna()` check before use
-4. **Medal Icons**: Up to 7 per story (🥇🥈🥉4️⃣5️⃣6️⃣7️⃣)
-5. **DUP Serial Format**: DUP101, DUP102... (starts at 101)
 
 ---
 

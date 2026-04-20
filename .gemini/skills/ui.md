@@ -41,31 +41,12 @@ Breaking News Finder uses a **dark theme** with **glassmorphism** styling.
 - Bronze: `#CD7F32` (🥉 3rd)
 - Rank 4-7: `#2d2d3d` to `#5d5d6d`
 
-#### Duplicate Score Colors
-- ≥80%: Gold `#FFD700`
-- ≥50%: Red `#FF6B6B`
-- <50%: Blue `#2BD2FF`
-
-### Animations
-
-```css
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes pulse {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 61, 113, 0.4); }
-    70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 61, 113, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 61, 113, 0); }
-}
-```
-
 ### Navigation
 
 Sidebar radio buttons with icons:
 - `🏁 Coverage Race`
-- `🔁 Duplicate Content`
+- `📊 Raw Data`
+- `🏠 Dashboard`
 
 ### Streamlit Overrides
 

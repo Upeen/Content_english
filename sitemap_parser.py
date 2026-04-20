@@ -324,8 +324,14 @@ def fetch_competitor_articles(name: str, config: dict, cutoff_time: datetime) ->
         date_urls = []
         for day_offset in range(days_to_fetch):
             target_date = today - timedelta(days=day_offset)
+            # Handle custom month format like "apr" for April
+            month_abbr = target_date.strftime("%b").lower()  # Gets abbreviated month like "apr"
             date_str = target_date.strftime("%d-%m-%Y")
-            date_url = base_url.replace("{date}", date_str).replace("{dd}", target_date.strftime("%d")).replace("{mm}", target_date.strftime("%m")).replace("{yyyy}", target_date.strftime("%Y"))
+            date_url = base_url.replace("{date}", date_str)\
+                               .replace("{dd}", target_date.strftime("%d"))\
+                               .replace("{mm}", target_date.strftime("%m"))\
+                               .replace("{mmm}", month_abbr)\
+                               .replace("{yyyy}", target_date.strftime("%Y"))
             date_urls.append(date_url)
         
         with ThreadPoolExecutor(max_workers=min(5, len(date_urls))) as date_executor:

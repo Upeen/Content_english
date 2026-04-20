@@ -65,6 +65,11 @@ COMPETITORS = {
         "fetch_strategy": "direct",
         "days_to_fetch": DEFAULT_DAYS_BACK
     },
+    "Zee Delhi NCR": {
+        "sitemap": "https://zeenews.india.com/hindi/sitemaps/delhi-haryana-{yyyy}-{mmm}-sitemap.xml",
+        "fetch_strategy": "date_based",
+        "days_to_fetch": DEFAULT_DAYS_BACK
+    },
 }
 # Data storage
 JSON_STORE_FILE = os.path.join(DATA_DIR, "news_data.json")

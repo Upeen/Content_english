@@ -1,91 +1,82 @@
 import os
 
-# Fetching & Lookback (Unified Time Span)
-DEFAULT_DAYS_BACK = int(os.getenv("DEFAULT_DAYS_BACK", 3))
-DATA_DIR = os.getenv("DATA_DIR", "data")
+# =========================
+# CONFIG: Fetch & Lookback
+# =========================
+DEFAULT_LOOKBACK_DAYS = int(os.getenv("DEFAULT_DAYS_BACK", 1))
+DATA_DIRECTORY = os.getenv("DATA_DIR", "data")
 
-COMPETITORS = {
-    "Navbharat Times": {
-        "sitemap": "https://navbharattimes.indiatimes.com/staticsitemap/nbt/news/sitemap-48hours.xml",
-        "fetch_strategy": "direct",
-        "days_to_fetch": DEFAULT_DAYS_BACK
+NEWS_SOURCES = {
+    "india_today": {
+        "sitemap_url": "https://www.indiatoday.in/news-it-sitemap.xml",
+        "fetch_method": "direct",
+        "lookback_days": DEFAULT_LOOKBACK_DAYS
     },
-    "AAJTAK.IN": {
-        "sitemap": "https://www.aajtak.in/rssfeeds/news-sitemap.xml",
-        "fetch_strategy": "direct",
-        "days_to_fetch": DEFAULT_DAYS_BACK
+    "times_of_india": {
+        "sitemap_url": "https://timesofindia.indiatimes.com/sitemap/today",
+        "fetch_method": "direct",
+        "lookback_days": DEFAULT_LOOKBACK_DAYS
     },
-    "JAGRAN.COM": {
-        "sitemap": "https://www.jagran.com/news-sitemap.xml",
-        "fetch_strategy": "direct",
-        "days_to_fetch": DEFAULT_DAYS_BACK
+    "news18": {
+        "sitemap_url": "https://www.news18.com/commonfeeds/v1/eng/sitemap/google-news.xml",
+        "fetch_method": "direct",
+        "lookback_days": DEFAULT_LOOKBACK_DAYS
     },
-    "ABP Live Hindi": {
-        "sitemap": "https://www.abplive.com/news-19-04-2026.xml",
-        "fetch_strategy": "direct",
-        "days_to_fetch": DEFAULT_DAYS_BACK
+    "india_tv": {
+        "sitemap_url": "https://www.indiatvnews.com/news-sitemap.xml",
+        "fetch_method": "direct",
+        "lookback_days": DEFAULT_LOOKBACK_DAYS
     },
-    "NDTV.IN": {
-        "sitemap": "https://ndtv.in/sitemap.xml?yyyy=2026&mm=3&sitename=ndtv-khabar&category=",
-        "fetch_strategy": "direct",
-        "days_to_fetch": DEFAULT_DAYS_BACK
+    "hindustan_times": {
+        "sitemap_url": "https://www.hindustantimes.com/sitemap-news.xml",
+        "fetch_method": "direct",
+        "lookback_days": DEFAULT_LOOKBACK_DAYS
     },
-    "LiveHindustan": {
-        "sitemap": "https://www.livehindustan.com/news-sitemap.xml",
-        "fetch_strategy": "direct",
-        "days_to_fetch": DEFAULT_DAYS_BACK
+    "zee_news": {
+        "sitemap_url": "https://zeenews.india.com/sitemap.xml",
+        "fetch_method": "direct",
+        "lookback_days": DEFAULT_LOOKBACK_DAYS
     },
-    "News18 Hindi": {
-        "sitemap": "https://hindi.news18.com/allstory-sitemap-data.xml",
-        "fetch_strategy": "direct",
-        "days_to_fetch": DEFAULT_DAYS_BACK
+    "dainik_jagran": {
+        "sitemap_url": "https://www.thedailyjagran.com/news-sitemap.xml",
+        "fetch_method": "direct",
+        "lookback_days": DEFAULT_LOOKBACK_DAYS
     },
-    "INDIATV.IN": {
-        "sitemap": "https://www.indiatv.in/xmlsitemap/sitemap/generic-articles-2026-04-19.xml",
-        "fetch_strategy": "direct",
-        "days_to_fetch": DEFAULT_DAYS_BACK
+    "the_hindu_businessline": {
+        "sitemap_url": "https://www.thehindubusinessline.com/sitemap/googlenews/all/all.xml",
+        "fetch_method": "direct",
+        "lookback_days": DEFAULT_LOOKBACK_DAYS
     },
-    "TIMESNOWHINDI.COM": {
-        "sitemap": "https://www.timesnowhindi.com/feeds/tnhindi-google-news-sitemap.xml",
-        "fetch_strategy": "direct",
-        "days_to_fetch": DEFAULT_DAYS_BACK
+    "indian_express": {
+        "sitemap_url": "https://indianexpress.com/sitemap/today.xml",
+        "fetch_method": "direct",
+        "lookback_days": DEFAULT_LOOKBACK_DAYS
     },
-    "JANSATTA.COM": {
-        "sitemap": "https://www.jansatta.com/sitemap.xml?yyyy=2026&mm=04&dd=19",
-        "fetch_strategy": "direct",
-        "days_to_fetch": DEFAULT_DAYS_BACK
-    },
-    "TV9HINDI.COM": {
-        "sitemap": "https://www.tv9hindi.com/sitemap.xml?yyyy=2026&mm=04&dd=19",
-        "fetch_strategy": "direct",
-        "days_to_fetch": DEFAULT_DAYS_BACK
-    },
-    "ZeeNews Hindi": {
-        "sitemap": "https://zeenews.india.com/hindi/sitemaps/news-sitemap.xml",
-        "fetch_strategy": "direct",
-        "days_to_fetch": DEFAULT_DAYS_BACK
-    },
-    "Zee Delhi NCR": {
-        "sitemap": "https://zeenews.india.com/hindi/sitemaps/delhi-haryana-{yyyy}-{mmm}-sitemap.xml",
-        "fetch_strategy": "date_based",
-        "days_to_fetch": DEFAULT_DAYS_BACK
-    },
+    "ndtv": {
+        "sitemap_url": "https://www.ndtv.com/sitemap/google-news-sitemap",
+        "fetch_method": "direct",
+        "lookback_days": DEFAULT_LOOKBACK_DAYS
+    }
 }
-# Data storage
-JSON_STORE_FILE = os.path.join(DATA_DIR, "news_data.json")
-ANALYSIS_STORE_FILE = os.path.join(DATA_DIR, "analysis_results.json")
 
-# Parsing settings
-REQUEST_TIMEOUT = 30
-MAX_RETRIES = 3
-RETRY_DELAY = 2
-CHUNK_SIZE = 500  # Process articles in chunks for memory optimization
+# =========================
+# STORAGE CONFIG
+# =========================
+NEWS_DATA_FILE = os.path.join(DATA_DIRECTORY, "news_data.json")
+ANALYSIS_RESULTS_FILE = os.path.join(DATA_DIRECTORY, "analysis_results.json")
 
-# NLP settings
-MIN_SIMILARITY_THRESHOLD = 0.35
-HIGH_SIMILARITY_THRESHOLD = 0.65
-TOP_KEYWORDS_COUNT = 20
-NGRAM_RANGE = (1, 3)
+# =========================
+# NETWORK / PARSING CONFIG
+# =========================
+HTTP_REQUEST_TIMEOUT = 30
+MAX_REQUEST_RETRIES = 3
+RETRY_BACKOFF_SECONDS = 2
+PROCESSING_CHUNK_SIZE = 1000
 
-# Fetching & Lookback
-# Controlled globally at the top of the file via DEFAULT_DAYS_BACK
+# =========================
+# NLP CONFIG
+# =========================
+SIMILARITY_THRESHOLD_MIN = 0.35
+SIMILARITY_THRESHOLD_HIGH = 0.65
+KEYWORD_TOP_N = 20
+KEYWORD_NGRAM_RANGE = (1, 3)

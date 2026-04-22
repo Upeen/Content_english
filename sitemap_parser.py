@@ -12,7 +12,7 @@ from lxml import etree
 from dateutil import parser as dateparser
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Optional
-from config import COMPETITORS, REQUEST_TIMEOUT, MAX_RETRIES, RETRY_DELAY
+from config import NEWS_SOURCES, HTTP_REQUEST_TIMEOUT, MAX_REQUEST_RETRIES, RETRY_BACKOFF_SECONDS
 from functools import lru_cache
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -43,7 +43,7 @@ NAMESPACES = {
 }
 
 
-def fetch_url(url: str, retries: int = MAX_RETRIES) -> Optional[bytes]:
+def fetch_url(url: str, retries: int = MAX_REQUEST_RETRIES) -> Optional[bytes]:
     """Fetch URL content with retry logic, exponential backoff, and WAF bypass using curl_cffi."""
     try:
         from curl_cffi import requests as cffi_requests
@@ -64,17 +64,17 @@ def fetch_url(url: str, retries: int = MAX_RETRIES) -> Optional[bytes]:
     for attempt in range(retries):
         try:
             if has_cffi and (force_cffi or "zeenews" in url or attempt > 0):
-                response = cffi_requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT, impersonate="chrome")
+                response = cffi_requests.get(url, headers=headers, timeout=HTTP_REQUEST_TIMEOUT, impersonate="chrome")
             else:
                 session = get_session()
-                response = session.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+                response = session.get(url, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
                 
             response.raise_for_status()
             return response.content
         except Exception as e:
             logger.warning(f"Attempt {attempt + 1}/{retries} failed for {url}: {e}")
             if attempt < retries - 1:
-                time.sleep(RETRY_DELAY * (attempt + 1))
+                time.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
     logger.error(f"All {retries} attempts failed for {url}")
     return None
 
@@ -308,21 +308,21 @@ def resolve_sitemap_index(xml_content: bytes, source_name: str) -> List[str]:
 
 def fetch_competitor_articles(name: str, config: dict, cutoff_time: datetime) -> List[Dict]:
     """Fetch and parse articles for a single competitor."""
-    base_url = config.get("sitemap")
-    fetch_strategy = config.get("fetch_strategy", "direct")
-    days_to_fetch = config.get("days_to_fetch", 3)
+    base_url = config.get("sitemap_url")
+    fetch_method = config.get("fetch_method", "direct")
+    lookback_days = config.get("lookback_days", 3)
     
     # Handle blocked sitemaps (403 forbidden)
-    if fetch_strategy == "blocked":
+    if fetch_method == "blocked":
         logger.warning(f"[{name}] Sitemap blocked (403). Marked as blocked in config.")
         return []
     
     # Handle date-based URLs like ABP Live: https://www.abplive.com/news-19-04-2026.xml
-    if fetch_strategy == "date_based":
+    if fetch_method == "date_based":
         all_articles = []
         today = datetime.now(timezone.utc)
         date_urls = []
-        for day_offset in range(days_to_fetch):
+        for day_offset in range(lookback_days):
             target_date = today - timedelta(days=day_offset)
             # Handle custom month format like "apr" for April
             month_abbr = target_date.strftime("%b").lower()  # Gets abbreviated month like "apr"
@@ -345,11 +345,11 @@ def fetch_competitor_articles(name: str, config: dict, cutoff_time: datetime) ->
         return all_articles
     
     # Handle date-based URLs with query params like Jansatta: ?yyyy=2026&mm=04&dd=19
-    if fetch_strategy == "date_query":
+    if fetch_method == "date_query":
         all_articles = []
         today = datetime.now(timezone.utc)
         date_urls = []
-        for day_offset in range(days_to_fetch):
+        for day_offset in range(lookback_days):
             target_date = today - timedelta(days=day_offset)
             date_url = base_url.replace("{yyyy}", target_date.strftime("%Y")).replace("{mm}", target_date.strftime("%m")).replace("{dd}", target_date.strftime("%d"))
             date_urls.append(date_url)
@@ -368,11 +368,11 @@ def fetch_competitor_articles(name: str, config: dict, cutoff_time: datetime) ->
         return all_articles
     
     # Handle special cases like News18 Hindi with today/yesterday format
-    if fetch_strategy == "special":
+    if fetch_method == "special":
         all_articles = []
         date_labels = ["today", "yesterday"]
         date_urls = []
-        for day_offset in range(days_to_fetch):
+        for day_offset in range(lookback_days):
             if day_offset < len(date_labels):
                 date_label = date_labels[day_offset]
             else:
@@ -394,7 +394,7 @@ def fetch_competitor_articles(name: str, config: dict, cutoff_time: datetime) ->
     if "{date}" in base_url or "-{dd}-{mm}-{yyyy}" in base_url:
         all_articles = []
         today = datetime.now(timezone.utc)
-        for day_offset in range(days_to_fetch):
+        for day_offset in range(lookback_days):
             target_date = today - timedelta(days=day_offset)
             date_str = target_date.strftime("%d-%m-%Y")
             date_url = base_url.format(date=date_str, dd=target_date.strftime("%d"), mm=target_date.strftime("%m"), yyyy=target_date.strftime("%Y"))
@@ -409,7 +409,7 @@ def fetch_competitor_articles(name: str, config: dict, cutoff_time: datetime) ->
     if "{yyyy}" in base_url or "{mm}" in base_url or "{dd}" in base_url:
         all_articles = []
         today = datetime.now(timezone.utc)
-        for day_offset in range(days_to_fetch):
+        for day_offset in range(lookback_days):
             target_date = today - timedelta(days=day_offset)
             date_url = base_url.replace("{yyyy}", target_date.strftime("%Y")).replace("{mm}", target_date.strftime("%m")).replace("{dd}", target_date.strftime("%d"))
             logger.info(f"[{name}] Fetching date-specific sitemap: {date_url}")
@@ -461,7 +461,7 @@ def fetch_all_competitors(hours: int = 24) -> List[Dict]:
     with ThreadPoolExecutor(max_workers=20) as executor:
         future_to_name = {
             executor.submit(fetch_competitor_articles, name, config, cutoff_time): name
-            for name, config in COMPETITORS.items()
+            for name, config in NEWS_SOURCES.items()
         }
 
         for future in as_completed(future_to_name):

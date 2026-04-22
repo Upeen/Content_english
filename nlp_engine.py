@@ -20,11 +20,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import DBSCAN
 
 from config import (
-    MIN_SIMILARITY_THRESHOLD,
-    HIGH_SIMILARITY_THRESHOLD,
-    TOP_KEYWORDS_COUNT,
-    NGRAM_RANGE,
-    CHUNK_SIZE,
+    SIMILARITY_THRESHOLD_MIN,
+    SIMILARITY_THRESHOLD_HIGH,
+    KEYWORD_TOP_N,
+    KEYWORD_NGRAM_RANGE,
+    PROCESSING_CHUNK_SIZE,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -41,8 +41,8 @@ def clean_text(text: str) -> str:
         return ""
     # Remove URLs
     text = re.sub(r"https?://\S+", "", text)
-    # Remove special characters but keep Gujarati unicode and basic punctuation
-    text = re.sub(r"[^\w\s\u0A80-\u0AFF.,!?-]", " ", text)
+    # Remove special characters but keep alphanumeric and basic punctuation
+    text = re.sub(r"[^\w\s.,!?-]", " ", text)
     # Normalize whitespace
     text = re.sub(r"\s+", " ", text).strip()
     return text.lower()
@@ -95,7 +95,7 @@ class NewsAnalyzer:
         # Build TF-IDF matrix with n-grams
         self.vectorizer = TfidfVectorizer(
             max_features=10000,
-            ngram_range=NGRAM_RANGE,
+            ngram_range=KEYWORD_NGRAM_RANGE,
             min_df=1,
             max_df=0.95,
             sublinear_tf=True,
@@ -113,7 +113,7 @@ class NewsAnalyzer:
 
         n = self.tfidf_matrix.shape[0]
 
-        if n <= CHUNK_SIZE:
+        if n <= PROCESSING_CHUNK_SIZE:
             # Small dataset: compute directly
             similarity = cosine_similarity(self.tfidf_matrix)
             # Ensure values are in valid range [0, 1] to prevent negative values
@@ -122,10 +122,10 @@ class NewsAnalyzer:
             # Large dataset: compute in chunks to save memory
             logger.info(f"Computing similarity in chunks (n={n})...")
             self.similarity_matrix = np.zeros((n, n), dtype=np.float32)
-            for i in range(0, n, CHUNK_SIZE):
-                end_i = min(i + CHUNK_SIZE, n)
-                for j in range(i, n, CHUNK_SIZE):
-                    end_j = min(j + CHUNK_SIZE, n)
+            for i in range(0, n, PROCESSING_CHUNK_SIZE):
+                end_i = min(i + PROCESSING_CHUNK_SIZE, n)
+                for j in range(i, n, PROCESSING_CHUNK_SIZE):
+                    end_j = min(j + PROCESSING_CHUNK_SIZE, n)
                     chunk_sim = cosine_similarity(
                         self.tfidf_matrix[i:end_i],
                         self.tfidf_matrix[j:end_j]
@@ -164,7 +164,7 @@ class NewsAnalyzer:
         col_indices = triu_indices[1][valid_mask]
         sim_scores = self.similarity_matrix[row_indices, col_indices]
         
-        high_sim_mask = sim_scores >= MIN_SIMILARITY_THRESHOLD
+        high_sim_mask = sim_scores >= SIMILARITY_THRESHOLD_MIN
         high_sim_scores = sim_scores[high_sim_mask]
         high_row_indices = row_indices[high_sim_mask]
         high_col_indices = col_indices[high_sim_mask]
@@ -188,7 +188,7 @@ class NewsAnalyzer:
                     "published_at": self.df.iloc[j].get("published_at", ""),
                 },
                 "similarity_score": round(float(sim_score), 4),
-                "is_likely_duplicate": sim_score >= HIGH_SIMILARITY_THRESHOLD,
+                "is_likely_duplicate": sim_score >= SIMILARITY_THRESHOLD_HIGH,
             }
             similar_pairs.append(pair)
 
@@ -263,7 +263,7 @@ class NewsAnalyzer:
         feature_names = self.vectorizer.get_feature_names_out()
 
         # Get top keywords
-        top_indices = mean_scores.argsort()[-TOP_KEYWORDS_COUNT:][::-1]
+        top_indices = mean_scores.argsort()[-KEYWORD_TOP_N:][::-1]
         keywords = [(feature_names[i], round(float(mean_scores[i]), 4)) for i in top_indices]
 
         return keywords

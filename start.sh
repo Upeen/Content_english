@@ -2,7 +2,7 @@
 
 # ===========================================
 # Breaking News Finder - Startup Script
-# Zee Gujarati Competitor Analysis Tool
+# Zee English Competitor Analysis Tool
 # ===========================================
 
 echo "📰 Breaking News Finder"
@@ -12,19 +12,29 @@ echo "========================"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Check if virtual environment exists
-if [ ! -d "venv" ]; then
-    echo "🔧 Creating virtual environment..."
+# Check for virtual environment and its validity
+ACTIVATE_PATH=""
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    ACTIVATE_PATH="venv/Scripts/activate"
+else
+    ACTIVATE_PATH="venv/bin/activate"
+fi
+
+if [ ! -f "$ACTIVATE_PATH" ]; then
+    echo "🔧 Virtual environment missing or corrupted. Recreating..."
+    rm -rf venv
+    rm -f .packages_installed
     python -m venv venv
+    # Check again if it was created successfully
+    if [ ! -f "$ACTIVATE_PATH" ]; then
+        echo "❌ Failed to create virtual environment. Please ensure python is in your PATH."
+        exit 1
+    fi
 fi
 
 # Activate virtual environment
 echo "📦 Activating virtual environment..."
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-    source venv/Scripts/activate
-else
-    source venv/bin/activate
-fi
+source "$ACTIVATE_PATH"
 
 # Install dependencies if needed
 if [ ! -f ".packages_installed" ]; then

@@ -4,10 +4,10 @@ try:
     from sitemap_parser import fetch_all_competitors
     from nlp_engine import run_full_analysis
     from data_store import save_articles, save_analysis
-    from config import DEFAULT_DAYS_BACK
+    from config import DEFAULT_LOOKBACK_DAYS
 
-    print(f"Fetching data for last {DEFAULT_DAYS_BACK} days...")
-    all_articles = fetch_all_competitors(hours=DEFAULT_DAYS_BACK * 24)
+    print(f"Fetching data for last {DEFAULT_LOOKBACK_DAYS} days...")
+    all_articles = fetch_all_competitors(hours=DEFAULT_LOOKBACK_DAYS * 24)
     if all_articles:
         save_articles(all_articles)
         analysis = run_full_analysis(all_articles)

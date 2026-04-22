@@ -1,10 +1,10 @@
 # 📰 Breaking News Finder
 
-**Zee Gujarati Competitor Content Intelligence & Gap Analysis Tool**
+**Zee English Competitor Content Intelligence & Gap Analysis Tool**
 
 ## Project Goal
 
-Monitor and analyze how competing Gujarati news publishers cover stories. Track who breaks news first and find coverage gaps.
+Monitor and analyze how competing English news publishers cover stories. Track who breaks news first and find coverage gaps.
 
 ---
 

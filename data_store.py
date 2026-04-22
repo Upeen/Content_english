@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Optional
 
-from config import DATA_DIR, JSON_STORE_FILE, ANALYSIS_STORE_FILE
+from config import DATA_DIRECTORY, NEWS_DATA_FILE, ANALYSIS_RESULTS_FILE
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 def ensure_data_dir():
     """Create data directory if it doesn't exist."""
-    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(DATA_DIRECTORY, exist_ok=True)
 
 
-def save_articles(articles: List[Dict], filepath: str = JSON_STORE_FILE) -> str:
+def save_articles(articles: List[Dict], filepath: str = NEWS_DATA_FILE) -> str:
     """
     Save articles to JSON file with metadata.
     Overwrites previous data (each run is a fresh snapshot).
@@ -45,7 +45,7 @@ def save_articles(articles: List[Dict], filepath: str = JSON_STORE_FILE) -> str:
     return filepath
 
 
-def load_articles(filepath: str = JSON_STORE_FILE) -> List[Dict]:
+def load_articles(filepath: str = NEWS_DATA_FILE) -> List[Dict]:
     """Load articles from JSON file."""
     if not os.path.exists(filepath):
         logger.warning(f"Data file not found: {filepath}")
@@ -62,7 +62,7 @@ def load_articles(filepath: str = JSON_STORE_FILE) -> List[Dict]:
         return []
 
 
-def save_analysis(results: Dict, filepath: str = ANALYSIS_STORE_FILE) -> str:
+def save_analysis(results: Dict, filepath: str = ANALYSIS_RESULTS_FILE) -> str:
     """Save analysis results to JSON."""
     ensure_data_dir()
 
@@ -80,7 +80,7 @@ def save_analysis(results: Dict, filepath: str = ANALYSIS_STORE_FILE) -> str:
     return filepath
 
 
-def load_analysis(filepath: str = ANALYSIS_STORE_FILE) -> Optional[Dict]:
+def load_analysis(filepath: str = ANALYSIS_RESULTS_FILE) -> Optional[Dict]:
     """Load analysis results from JSON."""
     if not os.path.exists(filepath):
         return None
@@ -96,11 +96,11 @@ def load_analysis(filepath: str = ANALYSIS_STORE_FILE) -> Optional[Dict]:
 
 def get_data_freshness() -> Optional[str]:
     """Check when data was last fetched."""
-    if not os.path.exists(JSON_STORE_FILE):
+    if not os.path.exists(NEWS_DATA_FILE):
         return None
 
     try:
-        with open(JSON_STORE_FILE, "r", encoding="utf-8") as f:
+        with open(NEWS_DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
         return data.get("metadata", {}).get("fetched_at")
     except Exception:

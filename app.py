@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Breaking News Lens - Streamlit Dashboard
-Zee Gujarati Competitor Analysis Tool
+Zee English Competitor Analysis Tool
 """
 
 import streamlit as st
@@ -15,13 +15,13 @@ import re
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import COMPETITORS, DEFAULT_DAYS_BACK
+from config import NEWS_SOURCES, DEFAULT_LOOKBACK_DAYS
 from sitemap_parser import fetch_all_competitors
 from nlp_engine import NewsAnalyzer, run_full_analysis
 from data_store import save_articles, load_articles, save_analysis, load_analysis, get_data_freshness
 
 st.set_page_config(
-    page_title="Breaking News Lens | Zee Gujarati",
+    page_title="Breaking News Lens | Zee English",
     page_icon="📰",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -409,7 +409,7 @@ def parse_ts(pub_str):
         return None
 
 
-def render_frontend_table(df, key, column_config=None, filename="data.csv", hide_controls=False):
+def render_frontend_table(df, key, column_config=None, filename="data.csv", hide_controls=True):
     # ---- SESSION STATE ----
     search_key = f"{key}_search"
     view_key = f"{key}_view"
@@ -420,10 +420,13 @@ def render_frontend_table(df, key, column_config=None, filename="data.csv", hide
         st.session_state[view_key] = "table"
 
     # ---- SEARCH FILTER ----
+    col_s1, col_s2 = st.columns([4, 3])
+    with col_s1:
+        st.text_input("🔍 Search this tab...", key=search_key, label_visibility="collapsed")
+    
     filtered_df = df.copy()
     if st.session_state[search_key]:
         query = st.session_state[search_key].lower()
-        # Vectorized search is faster than apply(lambda)
         mask = df.astype(str).apply(lambda x: x.str.lower().str.contains(query, na=False)).any(axis=1)
         filtered_df = df[mask]
 
@@ -494,7 +497,7 @@ def get_filters(key_prefix, include_hours=False):
                 date_range = (date_range[0], date_range[0])
 
         with col2:
-            all_sources = ["All"] + list(COMPETITORS.keys())
+            all_sources = ["All"] + list(NEWS_SOURCES.keys())
             source = st.selectbox("Source", all_sources, key=f"{key_prefix}_source")
         with col3:
             if include_hours:
@@ -546,7 +549,7 @@ def get_parsed_articles(articles):
 
 if fetch_btn:
     with st.status("🚀 Processing Competitor Scans...", expanded=True) as status:
-        all_articles = fetch_all_competitors(hours=DEFAULT_DAYS_BACK * 24)
+        all_articles = fetch_all_competitors(hours=DEFAULT_LOOKBACK_DAYS * 24)
         if all_articles:
             save_articles(all_articles)
             analysis = run_full_analysis(all_articles)
@@ -814,7 +817,7 @@ elif page == PAGE_DATE_WISE:
         elif isinstance(local_date_range, (list, tuple)) and len(local_date_range) == 1:
             local_date_range = (local_date_range[0], local_date_range[0])
     with filter_col2:
-        all_sources = ["All"] + list(COMPETITORS.keys())
+        all_sources = ["All"] + list(NEWS_SOURCES.keys())
         local_source = st.selectbox("Source", all_sources, key="date_wise_source")
 
 
@@ -849,63 +852,77 @@ elif page == PAGE_DATE_WISE:
     if not filtered_articles:
         st.info("No articles found in the selected date range.")
     else:
-        date_source_counts = {}
+        st.markdown("### 📊 Raw Article Feed")
+        
+        # Prepare table data with ALL available columns
+        table_data = []
         for ts, a in filtered_articles:
-            date_key = ts.strftime("%Y-%m-%d")
-            source = a.get("source", "Unknown")
-            if date_key not in date_source_counts:
-                date_source_counts[date_key] = {}
-            date_source_counts[date_key][source] = date_source_counts[date_key].get(source, 0) + 1
+            table_data.append({
+                "Published At": ts.strftime("%Y-%m-%d %H:%M:%S"),
+                "Channel": a.get("source"),
+                "Publication": a.get("publication_name", ""),
+                "Title": a.get("title"),
+                "Keywords": a.get("keywords", ""),
+                "URL": a.get("url"),
+            })
+        
+        full_df = pd.DataFrame(table_data).sort_values("Published At", ascending=False)
+        
+        # Source Tabs sorted by volume (highest to lowest)
+        source_counts = full_df["Channel"].value_counts()
+        sources = source_counts.index.tolist()
+        
+        tab_names = [f"All Sources ({len(full_df)})"]
+        for s in sources:
+            count = source_counts[s]
+            tab_names.append(f"{s} ({count})")
+        
+        tabs = st.tabs(tab_names)
+        
+        # Define comprehensive column configuration
+        col_config = {
+            "URL": st.column_config.LinkColumn("Link", display_text="Open"),
+            "Title": st.column_config.TextColumn("Title", width="large"),
+            "Keywords": st.column_config.TextColumn("Keywords", width="medium"),
+            "Published At": st.column_config.TextColumn("Published At", width="medium"),
+            "Publication": st.column_config.TextColumn("Publication", width="small"),
+        }
 
-        all_dates = sorted(date_source_counts.keys(), reverse=True)
-        all_sources_in_data = sorted(set(s for d in date_source_counts for s in date_source_counts[d].keys()))
-
-        pivot_rows = []
-        for source in all_sources_in_data:
-            row = {"Channel": source}
-            row_total = 0
-            for date_key in all_dates:
-                count = date_source_counts[date_key].get(source, 0)
-                row[date_key] = count
-                row_total += count
-            row["Total"] = row_total
-            pivot_rows.append(row)
-
-        total_row = {"Channel": "**Day Total**"}
-        grand_total = 0
-        for date_key in all_dates:
-            day_total = sum(date_source_counts[date_key].get(source, 0) for source in all_sources_in_data)
-            total_row[date_key] = day_total
-            grand_total += day_total
-        total_row["Total"] = grand_total
-        pivot_rows.append(total_row)
-
-        pivot_df = pd.DataFrame(pivot_rows)
-        pivot_df = pivot_df.set_index("Channel")
-        pivot_df.index.name = None
-
-        def styler_func(s, pivot_df=pivot_df):
-            is_total_row = pivot_df.index[pivot_df.index.get_indexer([s.index[0]])[0]] == "**Day Total**"
-            if is_total_row:
-                return ['min-width: 130px; text-align: center; font-weight: bold; background: rgba(255,75,75,0.1); font-size: 1.2rem;' for _ in s]
-            return ['min-width: 130px; text-align: center; font-size: 1.2rem;' for _ in s]
-
-
-        styler = pivot_df.style.apply(styler_func).set_properties(**{
-            'text-align': 'center',
-            'border': '1px solid rgba(255,255,255,0.05)',
-        }).set_table_styles([
-            {'selector': 'th', 'props': [('text-align', 'center'), ('padding', '8px'), ('background', 'rgba(10,10,15,0.95)')]},
-            {'selector': 'td', 'props': [('padding', '8px')]},
-        ])
-
-        pivot_height = (len(pivot_df) + 1) * 45 + 50
-
-        st.dataframe(
-            styler,
-            use_container_width=True,
-            height=pivot_height,
-        )
+        with tabs[0]:
+            # --- SUMMARY PIVOT TABLE ---
+            st.markdown("#### 📅 Content Distribution Summary")
+            date_source_counts = {}
+            for ts, a in filtered_articles:
+                date_key = ts.strftime("%Y-%m-%d")
+                source = a.get("source", "Unknown")
+                if date_key not in date_source_counts:
+                    date_source_counts[date_key] = {}
+                date_source_counts[date_key][source] = date_source_counts[date_key].get(source, 0) + 1
+            
+            if date_source_counts:
+                pivot_df = pd.DataFrame(date_source_counts).fillna(0).astype(int)
+                pivot_df["Total"] = pivot_df.sum(axis=1)
+                pivot_df.loc["**Day Total**"] = pivot_df.sum()
+                st.dataframe(pivot_df, use_container_width=True)
+            
+            st.markdown("---")
+            st.markdown("#### 📝 Raw Article Feed (All Sources)")
+            render_frontend_table(
+                full_df,
+                "raw_data_all_table",
+                filename="raw_data_all.csv",
+                column_config=col_config
+            )
+        
+        for i, source in enumerate(sources):
+            with tabs[i+1]:
+                src_df = full_df[full_df["Channel"] == source]
+                render_frontend_table(
+                    src_df,
+                    f"raw_data_{source}_table",
+                    filename=f"raw_data_{source}.csv",
+                    column_config=col_config
+                )
 
 
 elif page == PAGE_LATEST:
@@ -949,33 +966,47 @@ elif page == PAGE_LATEST:
                  continue
         
         latest_articles.append({
-            "Published": ts.strftime("%Y-%m-%d"),
-            "Time": ts.strftime("%I:%M %p"),
+            "Published At": ts.strftime("%Y-%m-%d %H:%M:%S"),
             "Channel": a.get("source"),
+            "Publication": a.get("publication_name", ""),
             "Title": a.get("title"),
+            "Keywords": a.get("keywords", ""),
             "URL": a.get("url"),
+            "Image URL": a.get("image_url", ""),
+            "Last Modified": a.get("lastmod", ""),
+            "Fetched At": a.get("fetched_at", ""),
+            "Size": len(a.get("title", "")) + len(a.get("keywords", ""))
         })
             
     if not latest_articles:
         st.info("No articles found matching the current criteria.")
     else:
         latest_df = pd.DataFrame(latest_articles)
-        latest_df = latest_df.sort_values(["Published", "Time"], ascending=False)
+        latest_df = latest_df.sort_values("Published At", ascending=False)
         
         st.success(f"Found **{len(latest_articles)}** articles.")
         
         sources = sorted(latest_df["Channel"].unique())
         
+        # Comprehensive column config for latest discovery
+        latest_col_config = {
+            "URL": st.column_config.LinkColumn("Link", display_text="Open"),
+            "Image URL": st.column_config.LinkColumn("Image", display_text="View"),
+            "Title": st.column_config.TextColumn("Title", width="large"),
+            "Keywords": st.column_config.TextColumn("Keywords", width="medium"),
+            "Published At": st.column_config.TextColumn("Published At", width="medium"),
+            "Publication": st.column_config.TextColumn("Publication", width="small"),
+            "Last Modified": st.column_config.TextColumn("Last Mod", width="small"),
+            "Fetched At": st.column_config.TextColumn("Fetched At", width="small"),
+        }
+
         if local_source != "All":
             st.markdown(f"### {local_source}")
             render_frontend_table(
                 latest_df,
                 f"latest_{local_source}_single_table",
                 filename=f"latest_{local_source}.csv",
-                column_config={
-                    "URL": st.column_config.LinkColumn("Link", display_text="Open"),
-                    "Title": st.column_config.TextColumn("Title", width="large"),
-                },
+                column_config=latest_col_config,
                 hide_controls=True
             )
         elif sources:
@@ -992,10 +1023,7 @@ elif page == PAGE_LATEST:
                     latest_df,
                     "latest_all_combined_table",
                     filename="latest_all_sources.csv",
-                    column_config={
-                        "URL": st.column_config.LinkColumn("Link", display_text="Open"),
-                        "Title": st.column_config.TextColumn("Title", width="large"),
-                    },
+                    column_config=latest_col_config,
                     hide_controls=True
                 )
             
@@ -1006,10 +1034,7 @@ elif page == PAGE_LATEST:
                         src_df,
                         f"latest_{source}_tab_table",
                         filename=f"latest_{source}.csv",
-                        column_config={
-                            "URL": st.column_config.LinkColumn("Link", display_text="Open"),
-                            "Title": st.column_config.TextColumn("Title", width="large"),
-                        },
+                        column_config=latest_col_config,
                         hide_controls=True
                     )
         else:

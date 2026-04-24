@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import List, Dict, Optional
 
 from config import DATA_DIRECTORY, NEWS_DATA_FILE, ANALYSIS_RESULTS_FILE
+from sitemap_parser import normalize_url
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,16 +26,33 @@ def save_articles(articles: List[Dict], filepath: str = NEWS_DATA_FILE) -> str:
     """
     Save articles to JSON file with metadata.
     Overwrites previous data (each run is a fresh snapshot).
+    Deduplicates by URL before saving as a final safety net.
     """
     ensure_data_dir()
+
+    # Final safety-net deduplication by normalized URL
+    seen: set = set()
+    unique_articles: List[Dict] = []
+    for article in articles:
+        url = article.get("url", "")
+        norm_url = normalize_url(url)
+        if norm_url and norm_url not in seen:
+            seen.add(norm_url)
+            unique_articles.append(article)
+    
+    if len(unique_articles) < len(articles):
+        logger.info(
+            f"save_articles: removed {len(articles) - len(unique_articles)} duplicate URLs "
+            f"before saving ({len(unique_articles)} unique)."
+        )
 
     data = {
         "metadata": {
             "fetched_at": datetime.now(timezone.utc).isoformat(),
-            "total_articles": len(articles),
-            "sources": list(set(a.get("source", "Unknown") for a in articles)),
+            "total_articles": len(unique_articles),
+            "sources": list(set(a.get("source", "Unknown") for a in unique_articles)),
         },
-        "articles": articles,
+        "articles": unique_articles,
     }
 
     with open(filepath, "w", encoding="utf-8") as f:
